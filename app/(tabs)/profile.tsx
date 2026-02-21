@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
+import { Image } from 'react-native';
 
 const PREF_LINKS = [
     { icon: 'language-outline' as const, label: 'Language', value: 'English' },
@@ -15,10 +17,21 @@ const PREF_LINKS = [
 ];
 
 export default function ProfileTab() {
-    const [name, setName] = useState('Traveller');
-    const [phone, setPhone] = useState('');
-    const [email, setEmail] = useState('');
     const [editMode, setEditMode] = useState(false);
+    const { user, isLoading, signInWithGoogle, signOut } = useAuth();
+    
+    // Set initial values based on auth state
+    const [localName, setLocalName] = useState(user?.name || 'Traveller');
+    const [phone, setPhone] = useState('');
+    const [localEmail, setLocalEmail] = useState(user?.email || '');
+    
+    // Update local state when user changes
+    useEffect(() => {
+        if (user) {
+            setLocalName(user.name);
+            setLocalEmail(user.email);
+        }
+    }, [user]);
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -30,46 +43,72 @@ export default function ProfileTab() {
                 {/* Avatar + name */}
                 <View style={styles.avatarSection}>
                     <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarInitial}>{name.charAt(0).toUpperCase()}</Text>
+                        {user ? (
+                            user.photo ? (
+                                <Image source={{ uri: user.photo }} style={styles.avatarImage} />
+                            ) : (
+                                <Text style={styles.avatarInitial}>{localName.charAt(0).toUpperCase()}</Text>
+                            )
+                        ) : (
+                            <Text style={styles.avatarInitial}>?</Text>
+                        )}
                     </View>
-                    {!editMode ? (
+                    {!user ? (
+                        // Show Google Sign-In button if not authenticated
                         <>
-                            <Text style={styles.profileName}>{name || 'Add your name'}</Text>
-                            <Text style={styles.profileSub}>{phone || 'Add mobile number'}</Text>
-                            <TouchableOpacity style={styles.editBtn} onPress={() => setEditMode(true)}>
-                                <Ionicons name="pencil-outline" size={14} color={Colors.textPrimary} />
-                                <Text style={styles.editBtnText}>Edit Profile</Text>
+                            <Text style={styles.profileName}>Sign in to continue</Text>
+                            <TouchableOpacity 
+                                style={styles.googleSignInBtn} 
+                                onPress={signInWithGoogle}
+                                disabled={isLoading}
+                            >
+                                <View style={styles.googleLogoContainer}>
+                                    <Ionicons name="logo-google" size={18} color="#4285F4" />
+                                </View>
+                                <Text style={styles.googleSignInText}>Sign in with Google</Text>
                             </TouchableOpacity>
                         </>
                     ) : (
-                        <View style={styles.editForm}>
-                            <TextInput
-                                style={styles.editInput}
-                                value={name}
-                                onChangeText={setName}
-                                placeholder="Full name"
-                                placeholderTextColor={Colors.textMuted}
-                            />
-                            <TextInput
-                                style={styles.editInput}
-                                value={phone}
-                                onChangeText={setPhone}
-                                placeholder="Phone number"
-                                placeholderTextColor={Colors.textMuted}
-                                keyboardType="phone-pad"
-                            />
-                            <TextInput
-                                style={styles.editInput}
-                                value={email}
-                                onChangeText={setEmail}
-                                placeholder="Email address"
-                                placeholderTextColor={Colors.textMuted}
-                                keyboardType="email-address"
-                            />
-                            <TouchableOpacity style={styles.saveBtn} onPress={() => setEditMode(false)}>
-                                <Text style={styles.saveBtnText}>Save Changes</Text>
-                            </TouchableOpacity>
-                        </View>
+                        // Show user profile if authenticated
+                        !editMode ? (
+                            <>
+                                <Text style={styles.profileName}>{localName || 'Add your name'}</Text>
+                                <Text style={styles.profileSub}>{localEmail || 'Add email'}</Text>
+                                <TouchableOpacity style={styles.editBtn} onPress={() => setEditMode(true)}>
+                                    <Ionicons name="pencil-outline" size={14} color={Colors.textPrimary} />
+                                    <Text style={styles.editBtnText}>Edit Profile</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : (
+                            <View style={styles.editForm}>
+                                <TextInput
+                                    style={styles.editInput}
+                                    value={localName}
+                                    onChangeText={setLocalName}
+                                    placeholder="Full name"
+                                    placeholderTextColor={Colors.textMuted}
+                                />
+                                <TextInput
+                                    style={styles.editInput}
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                    placeholder="Phone number"
+                                    placeholderTextColor={Colors.textMuted}
+                                    keyboardType="phone-pad"
+                                />
+                                <TextInput
+                                    style={styles.editInput}
+                                    value={localEmail}
+                                    onChangeText={setLocalEmail}
+                                    placeholder="Email address"
+                                    placeholderTextColor={Colors.textMuted}
+                                    keyboardType="email-address"
+                                />
+                                <TouchableOpacity style={styles.saveBtn} onPress={() => setEditMode(false)}>
+                                    <Text style={styles.saveBtnText}>Save Changes</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )
                     )}
                 </View>
 
@@ -116,10 +155,12 @@ export default function ProfileTab() {
                 </View>
 
                 {/* Logout */}
-                <TouchableOpacity style={styles.logoutBtn}>
-                    <Ionicons name="log-out-outline" size={18} color={Colors.error} />
-                    <Text style={styles.logoutText}>Sign Out</Text>
-                </TouchableOpacity>
+                {user && (
+                    <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
+                        <Ionicons name="log-out-outline" size={18} color={Colors.error} />
+                        <Text style={styles.logoutText}>Sign Out</Text>
+                    </TouchableOpacity>
+                )}
 
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -139,6 +180,10 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md, ...Shadow.medium,
     },
     avatarInitial: { fontSize: 34, fontWeight: '700', color: Colors.textInverse },
+    avatarImage: {
+        width: 80, height: 80, borderRadius: 40,
+        ...Shadow.medium,
+    },
     profileName: { ...Typography.headingMedium, marginBottom: 4 },
     profileSub: { ...Typography.bodyMedium },
     editBtn: {
@@ -147,6 +192,19 @@ const styles = StyleSheet.create({
         borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.border,
     },
     editBtnText: { ...Typography.labelLarge, fontSize: 13 },
+    googleSignInBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: Spacing.md, paddingVertical: 12, paddingHorizontal: 16,
+        borderRadius: Radius.full, borderWidth: 1, borderColor: '#dadce0',
+        backgroundColor: Colors.surface,
+        marginTop: Spacing.md,
+    },
+    googleLogoContainer: {
+        width: 24, height: 24,
+        borderRadius: 12, backgroundColor: 'white',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    googleSignInText: { ...Typography.labelLarge, color: Colors.textPrimary },
 
     editForm: { width: '100%', gap: Spacing.sm, marginTop: Spacing.md },
     editInput: {

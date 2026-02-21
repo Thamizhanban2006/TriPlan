@@ -12,16 +12,23 @@
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@supabase/supabase-js": "^2.97.0",
     "babel-preset-expo": "^54.0.10",
     "expo": "~54.0.33",
+    "expo-auth-session": "~7.0.10",
     "expo-constants": "~18.0.13",
+    "expo-crypto": "~15.0.8",
+    "expo-google-app-auth": "~8.3.0",
     "expo-linking": "~8.0.11",
     "expo-location": "^19.0.8",
+    "expo-random": "^14.0.1",
     "expo-router": "~6.0.23",
     "expo-status-bar": "~3.0.9",
+    "expo-web-browser": "^15.0.10",
     "groq-sdk": "^0.37.0",
     "react": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-maps": "1.20.1",
     "react-native-reanimated": "~4.1.1",
@@ -29,7 +36,7 @@
     "react-native-screens": "~4.16.0"
   },
   "devDependencies": {
-    "@types/react": "~19.1.0",
+    "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   },
   "private": true

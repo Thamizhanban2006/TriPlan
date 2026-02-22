@@ -23,6 +23,9 @@ export default function RootLayout() {
                 >
                     <Stack.Screen name="index" />
                     <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="auth/login" />
+                    <Stack.Screen name="auth/signup" />
+                    <Stack.Screen name="auth/callback" />
                     <Stack.Screen name="results" />
                     <Stack.Screen name="detail" />
                     <Stack.Screen name="passengers" />

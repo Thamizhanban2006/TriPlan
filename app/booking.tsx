@@ -14,6 +14,9 @@ import { GuardedLeg } from '../services/pivotEngine';
 import { geocodeSearch } from '../services/ors';
 import type { JourneyLeg } from '../services/groq';
 
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../services/supabase';
+
 const PROVIDER_URLS: Record<string, string> = {
     indigo: 'https://www.goindigo.in',
     'air india': 'https://www.airindia.in',
@@ -93,6 +96,7 @@ export default function BookingScreen() {
     const router = useRouter();
     const { state, dispatch } = useJourney();
     const { startGuardian, stopGuardian, status: guardianStatus } = usePivot();
+    const { user, refreshProfile } = useAuth();
     const route = state.selectedRoute;
 
     const [guardianLoading, setGuardianLoading] = useState(false);
@@ -101,6 +105,7 @@ export default function BookingScreen() {
     const [tickets, setTickets] = useState<{ seat: string, pnr: string, gate?: string, platform?: string }[]>([]);
     const [selectedSeats, setSelectedSeats] = useState<Record<number, boolean>>({});
     const [selectedMeals, setSelectedMeals] = useState<Record<number, boolean>>({});
+    const [isSaving, setIsSaving] = useState(false);
 
     const checkAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(40)).current;
@@ -125,6 +130,7 @@ export default function BookingScreen() {
         }
     }, [bookingState]);
 
+
     const handleConfirmBooking = () => {
         setBookingState('processing');
         progressAnim.setValue(0);
@@ -139,21 +145,52 @@ export default function BookingScreen() {
         let step = 0;
         const stepInterval = totalDuration / STEPS.length;
         
-        const interval = setInterval(() => {
+        const interval = setInterval(async () => {
             step++;
             if (step < STEPS.length) {
                 setProcessingStep(step);
             } else {
                 clearInterval(interval);
                 
+                let newTickets: any[] = [];
                 if (route) {
-                    const newTickets = route.legs.map((l) => ({
+                    newTickets = route.legs.map((l) => ({
                         seat: `${Math.floor(Math.random()*15)+1}${['A','B','C','D','E','F'][Math.floor(Math.random()*6)]}`,
                         pnr: `${l.provider.substring(0,2).toUpperCase()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
                         gate: l.mode === 'flight' ? `${Math.floor(Math.random()*20)+1}${['A','B'][Math.floor(Math.random()*2)]}` : undefined,
                         platform: l.mode === 'train' ? `${Math.floor(Math.random()*12)+1}` : undefined
                     }));
                     setTickets(newTickets);
+                }
+
+                // SAVE TO SUPABASE
+                if (user && route) {
+                    try {
+                        const { error: bError } = await supabase
+                            .from('bookings')
+                            .insert({
+                                user_id: user.id,
+                                from_city: route.legs[0].from,
+                                to_city: route.legs[route.legs.length - 1].to,
+                                total_price: totalPrice,
+                                route_data: route,
+                                tickets_data: newTickets,
+                                status: 'confirmed'
+                            });
+                        
+                        // Update spending
+                        await supabase
+                            .from('users')
+                            .update({ 
+                                total_spending: (user.totalSpending || 0) + totalPrice,
+                                carbon_saved: (user.carbonSaved || 0) + (Math.random() * 8 + 3)
+                            })
+                            .eq('id', user.id);
+
+                        refreshProfile();
+                    } catch (e) {
+                        console.error("Booking save failed:", e);
+                    }
                 }
 
                 setBookingState('success');

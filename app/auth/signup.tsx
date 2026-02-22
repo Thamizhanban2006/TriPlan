@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, TextInput,
     KeyboardAvoidingView, Platform, ScrollView, Modal,
@@ -31,26 +31,74 @@ export default function SignupScreen() {
     
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [country, setCountry] = useState('India');
-    const [language, setLanguage] = useState('English');
+    const [country, setCountry] = useState('Select Country');
+    const [language, setLanguage] = useState('Select Language');
     const [password, setPassword] = useState('');
     
     const [showCountryPicker, setShowCountryPicker] = useState(false);
     const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
-    // Navigate to home if user is authenticated (e.g. via Google)
+    // Navigate to home if user is authenticated (direct navigation as requested)
     useEffect(() => {
         if (user) {
-            // Check if user has all required profile info, if not, we stay here.
-            // But for this "hardcore" version, we'll just navigate.
             router.replace('/(tabs)');
         }
     }, [user]);
 
+    // Track if we've already filled from Google (optional now, but keeping for safety)
+    const isFetched = useRef(false);
+
+    // Auto-fill form when Google user is detected
+    useEffect(() => {
+        if (user && !isFetched.current) {
+            if (user.name) setName(user.name);
+            if (user.email) setEmail(user.email);
+            isFetched.current = true;
+        }
+    }, [user]);
+
+    const { refreshProfile } = useAuth();
+    const [isSaving, setIsSaving] = useState(false);
+
     const handleSignup = async () => {
-        // Here we would save to Supabase
-        // Including country, language, total_spending: 0, etc.
-        router.replace('/(tabs)');
+        // If they didn't use Google, they'd typically use email/password
+        // For simulation/hardcore purposes, if there's no session user, just navigate
+        if (!user) {
+            router.replace('/(tabs)');
+            return;
+        }
+
+        if (country === 'Select Country' || language === 'Select Language') {
+            alert('Please select your Country and Preferred Language to complete sign up.');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const { supabase } = await import('../../services/supabase');
+            if (supabase) {
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update({
+                        country: country,
+                        language: language,
+                        full_name: name
+                    })
+                    .eq('id', user.id);
+                
+                if (updateError) throw updateError;
+                await refreshProfile();
+            }
+            
+            // Navigate explicitly to the Home screen (Map View)
+            router.replace('/(tabs)');
+        } catch (error) {
+            console.error('Error completing signup:', error);
+            // Even on error, we try to go home so the user isn't stuck
+            router.replace('/(tabs)'); 
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -70,12 +118,25 @@ export default function SignupScreen() {
 
                     <TouchableOpacity 
                         style={styles.googleBtn} 
-                        onPress={() => signInWithGoogle(router)}
+                        onPress={() => signInWithGoogle()}
                         disabled={isLoading}
                     >
                         <Ionicons name="logo-google" size={20} color={Colors.textPrimary} />
-                        <Text style={styles.googleBtnText}>Sign up with Google</Text>
+                        <Text style={styles.googleBtnText}>
+                            {user ? 'Google Details Fetched' : 'Sign up with Google'}
+                        </Text>
+                        {user && <Ionicons name="checkmark-circle" size={18} color={Colors.success} />}
                     </TouchableOpacity>
+
+                    {user && (
+                        <View style={styles.welcomeBox}>
+                            <Ionicons name="sparkles" size={24} color={Colors.accent} />
+                            <Text style={styles.welcomeTitle}>Details Found!</Text>
+                            <Text style={styles.welcomeSub}>
+                                We've pre-filled your Name and Email from Google. Just pick your region and language to continue.
+                            </Text>
+                        </View>
+                    )}
 
                     <View style={styles.divider}>
                         <View style={styles.dividerLine} />
@@ -98,12 +159,13 @@ export default function SignupScreen() {
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email Address</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, user && { backgroundColor: Colors.border, opacity: 0.6 }]}
                                 placeholder="e.g. alex@example.com"
                                 value={email}
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
+                                editable={!user}
                             />
                         </View>
 
@@ -114,7 +176,12 @@ export default function SignupScreen() {
                                     style={styles.pickerTrigger}
                                     onPress={() => setShowCountryPicker(true)}
                                 >
-                                    <Text style={styles.pickerValue}>{country}</Text>
+                                    <Text style={[
+                                        styles.pickerValue,
+                                        country === 'Select Country' && { color: Colors.textMuted }
+                                    ]}>
+                                        {country}
+                                    </Text>
                                     <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
                                 </TouchableOpacity>
                             </View>
@@ -125,7 +192,12 @@ export default function SignupScreen() {
                                     style={styles.pickerTrigger}
                                     onPress={() => setShowLanguagePicker(true)}
                                 >
-                                    <Text style={styles.pickerValue}>{language}</Text>
+                                    <Text style={[
+                                        styles.pickerValue,
+                                        language === 'Select Language' && { color: Colors.textMuted }
+                                    ]}>
+                                        {language}
+                                    </Text>
                                     <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
                                 </TouchableOpacity>
                             </View>
@@ -144,8 +216,14 @@ export default function SignupScreen() {
                             </View>
                         )}
 
-                        <TouchableOpacity style={styles.signupBtn} onPress={handleSignup}>
-                            <Text style={styles.signupBtnText}>Complete Sign Up</Text>
+                        <TouchableOpacity 
+                            style={[styles.signupBtn, isSaving && { opacity: 0.7 }]} 
+                            onPress={handleSignup}
+                            disabled={isSaving}
+                        >
+                            <Text style={styles.signupBtnText}>
+                                {isSaving ? 'Saving Profile...' : 'Complete Sign Up'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
@@ -209,6 +287,13 @@ const styles = StyleSheet.create({
     backBtn: { marginBottom: Spacing.md },
     headerTitle: { ...Typography.displayMedium, marginBottom: 4 },
     headerSub: { ...Typography.bodyLarge, color: Colors.textSecondary },
+    
+    welcomeBox: {
+        alignItems: 'center', marginBottom: Spacing.xl, padding: Spacing.xl,
+        backgroundColor: '#EAF5EE', borderRadius: Radius.xl, borderWidth: 1, borderColor: '#CDEBD7',
+    },
+    welcomeTitle: { ...Typography.titleLarge, marginTop: 12, color: Colors.success },
+    welcomeSub: { ...Typography.bodyMedium, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
     
     googleBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

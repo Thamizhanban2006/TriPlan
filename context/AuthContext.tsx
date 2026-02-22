@@ -42,7 +42,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isAuthenticated: true,
         };
         setUser(basicUserData);
-        setIsLoading(false);
 
         // Fetch extra user data from public.users table in background
         try {
@@ -58,18 +57,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           // Auto-create profile if missing
           if (!profile) {
-            const { data: neu } = await supabase
+            const { data: neu, error: insertError } = await supabase
               .from('users')
               .insert({
                 id: session.user.id,
                 full_name: basicUserData.name,
-                email: session.user.email,
                 avatar_url: basicUserData.photo,
                 total_spending: 0,
                 carbon_saved: 0
               })
               .select()
               .single();
+            
+            if (insertError) {
+              console.error('Initial profile creation failed:', insertError);
+            }
             profile = neu;
           }
 
@@ -88,6 +90,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         } catch (profileError) {
           console.error('Profile fetch failed:', profileError);
+        } finally {
+          setIsLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
         // User signed out
@@ -161,7 +165,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(false);
   };
 
-  const signInWithGoogle = async (router?: any) => {
+  const signInWithGoogle = async () => {
     try {
       if (!supabase) {
         alert('Supabase is not configured. Please add SUPABASE_URL and SUPABASE_ANON_KEY.');
@@ -221,7 +225,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (sessionError) throw sessionError;
           console.log('Session set successfully');
           
-          // Force a small wait ensuring onAuthStateChange has had time to trigger
+          // Manual wait ensuring onAuthStateChange has had time to trigger
           // Or manually fetch user here for immediate UI update
           const { data: { user: supabaseUser } } = await supabase.auth.getUser();
           if (supabaseUser) {
@@ -236,19 +240,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             };
             setUser(basicUser);
             setIsLoading(false);
-
-            // Navigate immediately if router provided
-            if (router) {
-                console.log('Navigating to home using provided router...');
-                setTimeout(() => router.replace('/(tabs)'), 100);
-            }
           }
         } else {
           console.log('No tokens found in URL');
           setIsLoading(false);
-          // If browser returned success but no tokens, maybe it's just logging in?
-          // Fallback redirect for better UX
-          if (router) router.replace('/(tabs)');
         }
       } else {
         console.log('Browser result not success:', browserResult.type);

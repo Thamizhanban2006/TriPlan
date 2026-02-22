@@ -1,38 +1,74 @@
 import React, { useState, useEffect } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
+    View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius, Shadow } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { Image } from 'react-native';
+import { supabase } from '../../services/supabase';
 
-const PREF_LINKS = [
-    { icon: 'language-outline' as const, label: 'Language', value: 'English' },
+const PREF_LINKS = (profile: any) => [
+    { icon: 'language-outline' as const, label: 'Language', value: profile?.language || 'English' },
     { icon: 'notifications-outline' as const, label: 'Notifications', value: 'On' },
-    { icon: 'shield-checkmark-outline' as const, label: 'Privacy', value: '' },
+    { icon: 'flag-outline' as const, label: 'Country', value: profile?.country || 'India' },
     { icon: 'help-circle-outline' as const, label: 'Help & Support', value: '' },
     { icon: 'information-circle-outline' as const, label: 'About TriPlan', value: 'v1.0.0' },
 ];
 
 export default function ProfileTab() {
-    const { user, signInWithGoogle, signOut } = useAuth();
-    
-    // Local state for name to handle immediate updates or fallback
-    const [localName, setLocalName] = useState(user?.name || 'Traveller');
-    
+    const { user, profile, loading: authLoading, signOut } = useAuth();
+    const [stats, setStats] = useState({
+        total_spending: 0,
+        carbon_saved: 0,
+        trips_count: 0
+    });
+    const [loadingStats, setLoadingStats] = useState(true);
+
     useEffect(() => {
-        if (user) {
-            setLocalName(user.name);
-        }
+        const fetchUserData = async () => {
+            if (!user) return;
+            try {
+                // Fetch stats from users table
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('total_spending, carbon_saved')
+                    .eq('id', user.id)
+                    .single();
+
+                // Fetch trips count
+                const { count, error: countError } = await supabase
+                    .from('bookings')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id);
+
+                if (!userError && userData) {
+                    setStats({
+                        total_spending: userData.total_spending || 0,
+                        carbon_saved: userData.carbon_saved || 0,
+                        trips_count: count || 0
+                    });
+                }
+            } catch (e) {
+                console.error('Error fetching profile stats:', e);
+            } finally {
+                setLoadingStats(false);
+            }
+        };
+
+        fetchUserData();
     }, [user]);
 
     const STATS = [
-        { label: 'Total Spending', value: `₹${(user?.totalSpending || 0).toLocaleString()}`, icon: 'wallet-outline', color: Colors.accent },
-        { label: 'CO₂ Saved', value: `${(user?.carbonSaved || 0).toFixed(1)} kg`, icon: 'leaf-outline', color: Colors.success },
-        { label: 'Trips Taken', value: '12', icon: 'trail-sign-outline', color: '#8A2BE2' },
+        { label: 'Total Spending', value: `₹${(stats.total_spending || 0).toLocaleString()}`, icon: 'wallet-outline', color: Colors.accent },
+        { label: 'CO₂ Saved', value: `${(stats.carbon_saved || 0).toFixed(1)} kg`, icon: 'leaf-outline', color: Colors.success },
+        { label: 'Trips Taken', value: stats.trips_count.toString(), icon: 'trail-sign-outline', color: '#8A2BE2' },
     ];
+
+    // Get name from email as fallback
+    const nameFromEmail = user?.email?.split('@')[0] || 'Traveler';
+    const displayName = profile?.full_name || nameFromEmail;
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -45,10 +81,10 @@ export default function ProfileTab() {
                 <View style={styles.avatarSection}>
                     <View style={styles.avatarCircle}>
                         {user ? (
-                            user.photo ? (
-                                <Image source={{ uri: user.photo }} style={styles.avatarImage} />
+                            profile?.avatar_url ? (
+                                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
                             ) : (
-                                <Text style={styles.avatarInitial}>{localName.charAt(0).toUpperCase()}</Text>
+                                <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
                             )
                         ) : (
                             <Text style={styles.avatarInitial}>?</Text>
@@ -57,18 +93,18 @@ export default function ProfileTab() {
                     {!user ? (
                         <>
                             <Text style={styles.profileName}>Sign in to continue</Text>
-                            <TouchableOpacity style={styles.googleSignInBtn} onPress={signInWithGoogle}>
+                            <TouchableOpacity style={styles.googleSignInBtn} onPress={() => {/* handled in auth context */}}>
                                 <Ionicons name="logo-google" size={18} color="#4285F4" />
                                 <Text style={styles.googleSignInText}>Sign in with Google</Text>
                             </TouchableOpacity>
                         </>
                     ) : (
                         <>
-                            <Text style={styles.profileName}>{user.name}</Text>
+                            <Text style={styles.profileName}>{displayName}</Text>
                             <Text style={styles.profileSub}>{user.email}</Text>
                             <View style={styles.locationRow}>
                                 <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
-                                <Text style={styles.locationText}>{user.country || 'India'}</Text>
+                                <Text style={styles.locationText}>{profile?.country || 'India'}</Text>
                             </View>
                         </>
                     )}
@@ -93,8 +129,8 @@ export default function ProfileTab() {
                 </View>
 
                 <View style={styles.settingsGroup}>
-                    {PREF_LINKS.map((link, i) => (
-                        <TouchableOpacity key={i} style={[styles.settingRow, i === PREF_LINKS.length - 1 && { borderBottomWidth: 0 }]}>
+                    {PREF_LINKS(profile).map((link, i) => (
+                        <TouchableOpacity key={i} style={[styles.settingRow, i === PREF_LINKS(profile).length - 1 && { borderBottomWidth: 0 }]}>
                             <View style={styles.settingLeft}>
                                 <View style={styles.iconCircle}>
                                     <Ionicons name={link.icon as any} size={20} color={Colors.textPrimary} />

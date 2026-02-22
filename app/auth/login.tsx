@@ -80,7 +80,7 @@ export default function LoginScreen() {
 
                         <TouchableOpacity 
                             style={styles.googleBtn} 
-                            onPress={() => signInWithGoogle(router)}
+                            onPress={() => signInWithGoogle()}
                             disabled={isLoading}
                         >
                             <Ionicons name="logo-google" size={20} color={Colors.textPrimary} />

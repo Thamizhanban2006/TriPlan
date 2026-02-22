@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { supabase } from '../../services/supabase';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AuthCallback() {
@@ -9,9 +9,10 @@ export default function AuthCallback() {
   const navigated = useRef(false);
 
   useEffect(() => {
-    // If we have a user, handle the navigation immediately
+    // If we have a user, handle the navigation immediately to Home
     if (user && !navigated.current) {
         navigated.current = true;
+        // The user wants direct navigation to home page for both login and signup flows
         router.replace('/(tabs)');
     }
   }, [user, isLoading]);

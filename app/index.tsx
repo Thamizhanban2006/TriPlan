@@ -98,6 +98,15 @@ export default function WelcomeScreen() {
 
     const currentStep = onboardingSteps[step];
 
+    // If we're already logged in, don't show the onboarding slides at all
+    if (!isLoading && user) {
+        return (
+            <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color={Colors.accent} />
+            </View>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container}>
             {isLoading ? (

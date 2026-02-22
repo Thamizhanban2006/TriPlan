@@ -17,21 +17,22 @@ const PREF_LINKS = [
 ];
 
 export default function ProfileTab() {
-    const [editMode, setEditMode] = useState(false);
-    const { user, isLoading, signInWithGoogle, signOut } = useAuth();
+    const { user, signInWithGoogle, signOut } = useAuth();
     
-    // Set initial values based on auth state
+    // Local state for name to handle immediate updates or fallback
     const [localName, setLocalName] = useState(user?.name || 'Traveller');
-    const [phone, setPhone] = useState('');
-    const [localEmail, setLocalEmail] = useState(user?.email || '');
     
-    // Update local state when user changes
     useEffect(() => {
         if (user) {
             setLocalName(user.name);
-            setLocalEmail(user.email);
         }
     }, [user]);
+
+    const STATS = [
+        { label: 'Total Spending', value: `₹${(user?.totalSpending || 0).toLocaleString()}`, icon: 'wallet-outline', color: Colors.accent },
+        { label: 'CO₂ Saved', value: `${(user?.carbonSaved || 0).toFixed(1)} kg`, icon: 'leaf-outline', color: Colors.success },
+        { label: 'Trips Taken', value: '12', icon: 'trail-sign-outline', color: '#8A2BE2' },
+    ];
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -54,111 +55,64 @@ export default function ProfileTab() {
                         )}
                     </View>
                     {!user ? (
-                        // Show Google Sign-In button if not authenticated
                         <>
                             <Text style={styles.profileName}>Sign in to continue</Text>
-                            <TouchableOpacity 
-                                style={styles.googleSignInBtn} 
-                                onPress={signInWithGoogle}
-                                disabled={isLoading}
-                            >
-                                <View style={styles.googleLogoContainer}>
-                                    <Ionicons name="logo-google" size={18} color="#4285F4" />
-                                </View>
+                            <TouchableOpacity style={styles.googleSignInBtn} onPress={signInWithGoogle}>
+                                <Ionicons name="logo-google" size={18} color="#4285F4" />
                                 <Text style={styles.googleSignInText}>Sign in with Google</Text>
                             </TouchableOpacity>
                         </>
                     ) : (
-                        // Show user profile if authenticated
-                        !editMode ? (
-                            <>
-                                <Text style={styles.profileName}>{localName || 'Add your name'}</Text>
-                                <Text style={styles.profileSub}>{localEmail || 'Add email'}</Text>
-                                <TouchableOpacity style={styles.editBtn} onPress={() => setEditMode(true)}>
-                                    <Ionicons name="pencil-outline" size={14} color={Colors.textPrimary} />
-                                    <Text style={styles.editBtnText}>Edit Profile</Text>
-                                </TouchableOpacity>
-                            </>
-                        ) : (
-                            <View style={styles.editForm}>
-                                <TextInput
-                                    style={styles.editInput}
-                                    value={localName}
-                                    onChangeText={setLocalName}
-                                    placeholder="Full name"
-                                    placeholderTextColor={Colors.textMuted}
-                                />
-                                <TextInput
-                                    style={styles.editInput}
-                                    value={phone}
-                                    onChangeText={setPhone}
-                                    placeholder="Phone number"
-                                    placeholderTextColor={Colors.textMuted}
-                                    keyboardType="phone-pad"
-                                />
-                                <TextInput
-                                    style={styles.editInput}
-                                    value={localEmail}
-                                    onChangeText={setLocalEmail}
-                                    placeholder="Email address"
-                                    placeholderTextColor={Colors.textMuted}
-                                    keyboardType="email-address"
-                                />
-                                <TouchableOpacity style={styles.saveBtn} onPress={() => setEditMode(false)}>
-                                    <Text style={styles.saveBtnText}>Save Changes</Text>
-                                </TouchableOpacity>
+                        <>
+                            <Text style={styles.profileName}>{user.name}</Text>
+                            <Text style={styles.profileSub}>{user.email}</Text>
+                            <View style={styles.locationRow}>
+                                <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
+                                <Text style={styles.locationText}>{user.country || 'India'}</Text>
                             </View>
-                        )
+                        </>
                     )}
                 </View>
 
-                {/* Stats */}
+                {/* Stats Row */}
                 <View style={styles.statsRow}>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statValue}>3</Text>
-                        <Text style={styles.statLabel}>Trips</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statBox}>
-                        <Text style={styles.statValue}>2</Text>
-                        <Text style={styles.statLabel}>Cities</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statBox}>
-                        <Text style={styles.statValue}>46kg</Text>
-                        <Text style={styles.statLabel}>CO₂ saved</Text>
-                    </View>
+                    {STATS.map((stat, i) => (
+                        <View key={i} style={styles.statBox}>
+                            <View style={[styles.statIcon, { backgroundColor: stat.color + '15' }]}>
+                                <Ionicons name={stat.icon as any} size={20} color={stat.color} />
+                            </View>
+                            <Text style={styles.statValue}>{stat.value}</Text>
+                            <Text style={styles.statLabel}>{stat.label}</Text>
+                        </View>
+                    ))}
                 </View>
 
-                {/* Preferences */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>PREFERENCES</Text>
-                    <View style={styles.prefCard}>
-                        {PREF_LINKS.map((item, i) => (
-                            <TouchableOpacity
-                                key={item.label}
-                                style={[styles.prefRow, i < PREF_LINKS.length - 1 && styles.prefRowBorder]}
-                            >
-                                <View style={styles.prefIconWrap}>
-                                    <Ionicons name={item.icon} size={18} color={Colors.textSecondary} />
-                                </View>
-                                <Text style={styles.prefLabel}>{item.label}</Text>
-                                <View style={styles.prefRight}>
-                                    {item.value ? (
-                                        <Text style={styles.prefValue}>{item.value}</Text>
-                                    ) : null}
-                                    <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-                                </View>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                {/* Account Settings */}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Account Settings</Text>
                 </View>
 
-                {/* Logout */}
+                <View style={styles.settingsGroup}>
+                    {PREF_LINKS.map((link, i) => (
+                        <TouchableOpacity key={i} style={[styles.settingRow, i === PREF_LINKS.length - 1 && { borderBottomWidth: 0 }]}>
+                            <View style={styles.settingLeft}>
+                                <View style={styles.iconCircle}>
+                                    <Ionicons name={link.icon as any} size={20} color={Colors.textPrimary} />
+                                </View>
+                                <Text style={styles.settingLabel}>{link.label}</Text>
+                            </View>
+                            <View style={styles.settingRight}>
+                                <Text style={styles.settingValue}>{link.value}</Text>
+                                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
                 {user && (
                     <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
-                        <Ionicons name="log-out-outline" size={18} color={Colors.error} />
-                        <Text style={styles.logoutText}>Sign Out</Text>
+                        <Ionicons name="log-out-outline" size={20} color={Colors.error} />
+                        <Text style={styles.logoutText}>Sign Out from Account</Text>
                     </TouchableOpacity>
                 )}
 
@@ -180,79 +134,67 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md, ...Shadow.medium,
     },
     avatarInitial: { fontSize: 34, fontWeight: '700', color: Colors.textInverse },
-    avatarImage: {
-        width: 80, height: 80, borderRadius: 40,
-        ...Shadow.medium,
-    },
+    avatarImage: { width: 80, height: 80, borderRadius: 40 },
+    
     profileName: { ...Typography.headingMedium, marginBottom: 4 },
-    profileSub: { ...Typography.bodyMedium },
-    editBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-        marginTop: Spacing.md, paddingHorizontal: 16, paddingVertical: 8,
-        borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.border,
-    },
-    editBtnText: { ...Typography.labelLarge, fontSize: 13 },
+    profileSub: { ...Typography.bodyMedium, color: Colors.textMuted },
+    
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    locationText: { ...Typography.bodySmall, color: Colors.textMuted },
+
     googleSignInBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: Spacing.md, paddingVertical: 12, paddingHorizontal: 16,
+        gap: Spacing.md, paddingVertical: 12, paddingHorizontal: 24,
         borderRadius: Radius.full, borderWidth: 1, borderColor: '#dadce0',
         backgroundColor: Colors.surface,
-        marginTop: Spacing.md,
-    },
-    googleLogoContainer: {
-        width: 24, height: 24,
-        borderRadius: 12, backgroundColor: 'white',
-        alignItems: 'center', justifyContent: 'center',
+        marginTop: Spacing.lg,
+        ...Shadow.small,
     },
     googleSignInText: { ...Typography.labelLarge, color: Colors.textPrimary },
 
-    editForm: { width: '100%', gap: Spacing.sm, marginTop: Spacing.md },
-    editInput: {
-        borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md,
-        paddingHorizontal: Spacing.md, paddingVertical: 12,
-        ...Typography.bodyLarge, backgroundColor: Colors.surface,
-    },
-    saveBtn: {
-        backgroundColor: Colors.accent, paddingVertical: 14,
-        borderRadius: Radius.full, alignItems: 'center', marginTop: 4,
-    },
-    saveBtnText: { ...Typography.labelLarge, color: Colors.textInverse },
-
     statsRow: {
-        flexDirection: 'row', backgroundColor: Colors.surface,
-        borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.border,
-        marginBottom: Spacing.lg, padding: Spacing.md,
+        flexDirection: 'row', gap: Spacing.sm,
+        marginBottom: Spacing.xl,
     },
-    statBox: { flex: 1, alignItems: 'center' },
-    statValue: { ...Typography.headingMedium },
-    statLabel: { ...Typography.bodySmall, marginTop: 2 },
-    statDivider: { width: 1, height: 36, backgroundColor: Colors.border },
+    statBox: {
+        flex: 1, backgroundColor: Colors.surface, borderRadius: Radius.xl,
+        padding: Spacing.md, alignItems: 'center', borderWidth: 1, borderColor: Colors.border,
+        ...Shadow.small,
+    },
+    statIcon: {
+        width: 40, height: 40, borderRadius: 20,
+        alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+    },
+    statValue: { ...Typography.labelLarge, fontSize: 16, fontWeight: '700' },
+    statLabel: { ...Typography.bodySmall, color: Colors.textMuted, marginTop: 2 },
 
-    section: { marginBottom: Spacing.lg },
-    sectionTitle: { ...Typography.labelSmall, letterSpacing: 1, marginBottom: Spacing.sm },
+    sectionHeader: { marginBottom: Spacing.sm, paddingHorizontal: 4 },
+    sectionTitle: { ...Typography.labelSmall, color: Colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
 
-    prefCard: {
+    settingsGroup: {
         backgroundColor: Colors.surface, borderRadius: Radius.xl,
         borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+        marginBottom: Spacing.xl,
     },
-    prefRow: {
-        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        padding: Spacing.md,
+    settingRow: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        padding: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border,
     },
-    prefRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
-    prefIconWrap: {
-        width: 34, height: 34, borderRadius: 10,
-        backgroundColor: Colors.accentLight, alignItems: 'center', justifyContent: 'center',
+    settingLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    iconCircle: {
+        width: 36, height: 36, borderRadius: 18,
+        backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center',
     },
-    prefLabel: { ...Typography.bodyLarge, flex: 1 },
-    prefRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    prefValue: { ...Typography.bodyMedium },
+    settingLabel: { ...Typography.bodyLarge, color: Colors.textPrimary },
+    settingValue: { ...Typography.bodyMedium, color: Colors.textMuted, marginRight: 4 },
+    settingRight: { flexDirection: 'row', alignItems: 'center' },
 
     logoutBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: Spacing.sm, paddingVertical: 14,
-        borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.errorLight,
-        backgroundColor: Colors.errorLight,
+        gap: Spacing.sm, paddingVertical: 16,
+        borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.error + '30',
+        backgroundColor: Colors.error + '08',
     },
-    logoutText: { ...Typography.labelLarge, color: Colors.error },
+    logoutText: { ...Typography.labelLarge, color: Colors.error, fontWeight: '600' },
 });
+

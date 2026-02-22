@@ -27,56 +27,126 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loadUserData();
 
     // Listen for Supabase auth changes
-    const authListener = onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        // User signed in via Supabase
-        const userData: User = {
+    const authListener = onAuthStateChange(async (event, session) => {
+      if (!supabase) return;
+
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        // Immediately set basic user info while we fetch profile
+        const basicUserData: User = {
           id: session.user.id,
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email!,
           photo: session.user.user_metadata?.avatar_url,
+          totalSpending: 0,
+          carbonSaved: 0,
           isAuthenticated: true,
         };
+        setUser(basicUserData);
+        setIsLoading(false);
 
-        AsyncStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
+        // Fetch extra user data from public.users table in background
+        try {
+          let { data: profile, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error fetching profile:', error);
+          }
+
+          // Auto-create profile if missing
+          if (!profile) {
+            const { data: neu } = await supabase
+              .from('users')
+              .insert({
+                id: session.user.id,
+                full_name: basicUserData.name,
+                email: session.user.email,
+                avatar_url: basicUserData.photo,
+                total_spending: 0,
+                carbon_saved: 0
+              })
+              .select()
+              .single();
+            profile = neu;
+          }
+
+          if (profile) {
+            const userData: User = {
+              ...basicUserData,
+              name: profile.full_name || basicUserData.name,
+              country: profile.country,
+              language: profile.language,
+              totalSpending: profile.total_spending || 0,
+              carbonSaved: profile.carbon_saved || 0,
+            };
+
+            AsyncStorage.setItem('user', JSON.stringify(userData));
+            setUser(userData);
+          }
+        } catch (profileError) {
+          console.error('Profile fetch failed:', profileError);
+        }
       } else if (event === 'SIGNED_OUT') {
         // User signed out
         AsyncStorage.removeItem('user');
         setUser(null);
+        setIsLoading(false);
       }
     });
 
     // Cleanup function to unsubscribe
     return () => {
-      authListener.data.subscription.unsubscribe();
+      if (authListener?.data?.subscription) {
+        authListener.data.subscription.unsubscribe();
+      }
     };
   }, []);
 
   const loadUserData = async () => {
     try {
+      if (!supabase) {
+        const storedUser = await AsyncStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+        setIsLoading(false);
+        return;
+      }
+
       // Check if user is already authenticated with Supabase
       const user = await getCurrentUser();
 
       if (user) {
         // User is already logged in via Supabase
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
         const userData: User = {
           id: user.id,
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          name: profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           email: user.email!,
           photo: user.user_metadata?.avatar_url,
+          country: profile?.country,
+          language: profile?.language,
+          totalSpending: profile?.total_spending || 0,
+          carbonSaved: profile?.carbon_saved || 0,
           isAuthenticated: true,
         };
 
         await AsyncStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        return; // Exit early if user is found in Supabase session
-      }
-
-      // Fallback to locally stored user data
-      const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      } else {
+        // Fallback to locally stored user data
+        const storedUser = await AsyncStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -91,8 +161,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(false);
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (router?: any) => {
     try {
+      if (!supabase) {
+        alert('Supabase is not configured. Please add SUPABASE_URL and SUPABASE_ANON_KEY.');
+        return;
+      }
+
       setIsLoading(true);
       console.log('Attempting Google sign in...');
 
@@ -127,32 +202,89 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (!finalAccessToken && url.includes('#')) {
           const fragment = url.split('#')[1];
-          const fragmentParams = new URLSearchParams(fragment);
-          finalAccessToken = fragmentParams.get('access_token') as string | undefined;
-          finalRefreshToken = fragmentParams.get('refresh_token') as string | undefined;
+          // Robust token extraction for fragmented URLs
+          const parts = fragment.split('&');
+          parts.forEach(part => {
+              const pair = part.split('=');
+              if (pair[0] === 'access_token') finalAccessToken = pair[1];
+              if (pair[0] === 'refresh_token') finalRefreshToken = pair[1];
+          });
         }
 
         if (finalAccessToken && finalRefreshToken) {
           console.log('Tokens found, setting session...');
-          const { error: sessionError } = await supabase!.auth.setSession({
+          const { error: sessionError } = await supabase.auth.setSession({
             access_token: finalAccessToken as string,
             refresh_token: finalRefreshToken as string,
           });
 
           if (sessionError) throw sessionError;
           console.log('Session set successfully');
+          
+          // Force a small wait ensuring onAuthStateChange has had time to trigger
+          // Or manually fetch user here for immediate UI update
+          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+          if (supabaseUser) {
+            const basicUser: User = {
+                id: supabaseUser.id,
+                name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
+                email: supabaseUser.email!,
+                photo: supabaseUser.user_metadata?.avatar_url,
+                totalSpending: 0,
+                carbonSaved: 0,
+                isAuthenticated: true,
+            };
+            setUser(basicUser);
+            setIsLoading(false);
+
+            // Navigate immediately if router provided
+            if (router) {
+                console.log('Navigating to home using provided router...');
+                setTimeout(() => router.replace('/(tabs)'), 100);
+            }
+          }
         } else {
           console.log('No tokens found in URL');
+          setIsLoading(false);
+          // If browser returned success but no tokens, maybe it's just logging in?
+          // Fallback redirect for better UX
+          if (router) router.replace('/(tabs)');
         }
-      } else if (browserResult.type === 'cancel') {
-        console.log('User cancelled sign in');
+      } else {
+        console.log('Browser result not success:', browserResult.type);
+        setIsLoading(false);
       }
 
     } catch (error: any) {
       console.error('Error during Google sign in:', error?.message || error);
       alert(`Sign in failed: ${error?.message || 'Unknown error occurred'}`);
-    } finally {
       setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (!user?.id || !supabase) return;
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile) {
+        const updatedUser: User = {
+          ...user,
+          name: profile.full_name || user.name,
+          country: profile.country,
+          language: profile.language,
+          totalSpending: profile.total_spending || 0,
+          carbonSaved: profile.carbon_saved || 0,
+        };
+        setUser(updatedUser);
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    } catch (e) {
+      console.error("Error refreshing profile:", e);
     }
   };
 
@@ -177,6 +309,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     signInWithGoogle,
     signOut,
+    refreshProfile
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

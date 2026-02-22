@@ -1,23 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../services/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AuthCallback() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const { user, isLoading } = useAuth();
+  const navigated = useRef(false);
 
   useEffect(() => {
-    // Handle the OAuth callback
-    const handleAuthCallback = async () => {
-      // Supabase should handle the session automatically through onAuthStateChange
-      // Just redirect back to the profile page
-      setTimeout(() => {
-        router.back(); // Go back to previous screen (profile)
-      }, 1000);
-    };
-
-    handleAuthCallback();
-  }, [params]);
+    // If we have a user, handle the navigation immediately
+    if (user && !navigated.current) {
+        navigated.current = true;
+        router.replace('/(tabs)');
+    }
+  }, [user, isLoading]);
 
   return null; // This component doesn't render anything visible
 }

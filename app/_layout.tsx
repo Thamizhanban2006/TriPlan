@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { JourneyProvider } from '../context/JourneyContext';
 import { AuthProvider } from '../context/AuthContext';
+import { PivotProvider } from '../context/PivotContext';
 import { Colors } from '../constants/theme';
 import 'react-native-gesture-handler';
 
@@ -11,6 +12,7 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
             <AuthProvider>
             <JourneyProvider>
+            <PivotProvider>
                 <StatusBar style="dark" backgroundColor={Colors.background} />
                 <Stack
                     screenOptions={{
@@ -26,6 +28,7 @@ export default function RootLayout() {
                     <Stack.Screen name="passengers" />
                     <Stack.Screen name="booking" />
                 </Stack>
+            </PivotProvider>
             </JourneyProvider>
             </AuthProvider>
         </GestureHandlerRootView>

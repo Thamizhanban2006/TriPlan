@@ -31,7 +31,9 @@
       "package": "com.triplan.app",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE"
       ]
     },
     "web": {
@@ -44,7 +46,17 @@
           "origin": false
         }
       ],
-      "expo-location"
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0A0A0A",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "TriPlan Guardian"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

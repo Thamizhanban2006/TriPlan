@@ -371,133 +371,115 @@ export default function MapHomeScreen() {
 
     return (
         <View style={styles.container}>
-            {/* ── Full-screen Map ── */}
-            <MapView
-                ref={mapRef}
-                style={StyleSheet.absoluteFill}
-                provider={PROVIDER_DEFAULT}
-                mapType={mapType}
-                showsUserLocation={locationGranted}
-                showsMyLocationButton={false}
-                showsCompass
-                showsScale
-                onLongPress={handleMapPress}
-                initialRegion={{
-                    latitude: 20.5937, longitude: 78.9629,
-                    latitudeDelta: 15, longitudeDelta: 15,
-                }}
-            >
-                {/* Destination marker */}
-                {destination && (
-                    <Marker
-                        coordinate={{ latitude: destination.lat, longitude: destination.lng }}
-                        title={destination.name}
-                        anchor={{ x: 0.5, y: 1 }}
-                    >
-                        <View style={styles.destMarkerWrap}>
-                            <Ionicons name="location" size={28} color={Colors.textPrimary} />
-                        </View>
-                    </Marker>
-                )}
 
-                {/* Route polyline */}
-                {polylineCoords.length > 1 && (
-                    <>
-                        {/* Shadow */}
-                        <Polyline coordinates={polylineCoords} strokeColor="rgba(0,0,0,0.12)" strokeWidth={7} />
-                        {/* Main line */}
-                        <Polyline coordinates={polylineCoords} strokeColor={Colors.textPrimary} strokeWidth={4} />
-                        {/* Progress (done portion) */}
-                        {navMode && currentStep > 0 && (
-                            <Polyline
-                                coordinates={polylineCoords.slice(0, Math.min(currentStep * 2, polylineCoords.length))}
-                                strokeColor={Colors.success}
-                                strokeWidth={5}
-                            />
-                        )}
-                    </>
-                )}
+            {/* ── Map (top 75 %) ───────────────────────────────────────────── */}
+            <View style={styles.mapContainer}>
+                <MapView
+                    ref={mapRef}
+                    style={StyleSheet.absoluteFill}
+                    provider={PROVIDER_DEFAULT}
+                    mapType={mapType}
+                    showsUserLocation={locationGranted}
+                    showsMyLocationButton={false}
+                    showsCompass
+                    showsScale
+                    onLongPress={handleMapPress}
+                    initialRegion={{
+                        latitude: 20.5937, longitude: 78.9629,
+                        latitudeDelta: 15, longitudeDelta: 15,
+                    }}
+                >
+                    {/* Destination marker */}
+                    {destination && (
+                        <Marker
+                            coordinate={{ latitude: destination.lat, longitude: destination.lng }}
+                            title={destination.name}
+                            anchor={{ x: 0.5, y: 1 }}
+                        >
+                            <View style={styles.destMarkerWrap}>
+                                <Ionicons name="location" size={28} color={Colors.textPrimary} />
+                            </View>
+                        </Marker>
+                    )}
 
-                {/* POI markers */}
-                {pois.map(poi => (
-                    <POIMarker
-                        key={poi.id}
-                        poi={poi}
-                        color={getCategoryColor(poi.category)}
-                        onPress={() => {
-                            const result: GeoResult = {
-                                name: poi.name,
-                                displayName: poi.name,
-                                lat: poi.lat,
-                                lng: poi.lng,
-                                type: 'place',
-                                isCity: false,
-                            };
-                            selectDestination(result);
-                        }}
-                    />
-                ))}
-
-                {/* Selected POI highlight circle */}
-                {selectedPOI && (
-                    <Circle
-                        center={{ latitude: selectedPOI.lat, longitude: selectedPOI.lng }}
-                        radius={80}
-                        fillColor="rgba(0,0,0,0.08)"
-                        strokeColor={Colors.textPrimary}
-                        strokeWidth={1}
-                    />
-                )}
-            </MapView>
-
-            {/* ── TOP OVERLAY ── */}
-            <SafeAreaView style={styles.topOverlay} pointerEvents="box-none" edges={['top']}>
-
-                {/* Navigation step banner (shown during nav) */}
-                {navMode && currentNavStep && (
-                    <View style={styles.navBanner}>
-                        <View style={styles.navBannerIcon}>
-                            <Ionicons
-                                name={(STEP_ICONS[currentNavStep.type] || 'navigate') as any}
-                                size={22}
-                                color={Colors.textInverse}
-                            />
-                        </View>
-                        <View style={styles.navBannerText}>
-                            <Text style={styles.navInstruction} numberOfLines={2}>{currentNavStep.instruction}</Text>
-                            <Text style={styles.navDistance}>
-                                {formatDistance(currentNavStep.distance)} · {formatDuration(currentNavStep.duration)}
-                            </Text>
-                        </View>
-                        <TouchableOpacity style={styles.navEndBtn} onPress={stopNavigation}>
-                            <Ionicons name="close" size={18} color={Colors.textInverse} />
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* Search bar */}
-                {!navMode && (
-                    <View style={styles.searchBarRow}>
-                        <TouchableOpacity style={styles.searchBar} onPress={openSearch} activeOpacity={0.9}>
-                            <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
-                            <Text style={[styles.searchBarText, destination && styles.searchBarTextActive]} numberOfLines={1}>
-                                {destination ? destination.name : 'Search city or place...'}
-                            </Text>
-                            {destination && (
-                                <TouchableOpacity onPress={clearDestination} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                                    <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
-                                </TouchableOpacity>
+                    {/* Route polyline */}
+                    {polylineCoords.length > 1 && (
+                        <>
+                            <Polyline coordinates={polylineCoords} strokeColor="rgba(0,0,0,0.12)" strokeWidth={7} />
+                            <Polyline coordinates={polylineCoords} strokeColor={Colors.textPrimary} strokeWidth={4} />
+                            {navMode && currentStep > 0 && (
+                                <Polyline
+                                    coordinates={polylineCoords.slice(0, Math.min(currentStep * 2, polylineCoords.length))}
+                                    strokeColor={Colors.success}
+                                    strokeWidth={5}
+                                />
                             )}
-                        </TouchableOpacity>
+                        </>
+                    )}
 
-                        {/* Map type toggle */}
+                    {/* POI markers */}
+                    {pois.map(poi => (
+                        <POIMarker
+                            key={poi.id}
+                            poi={poi}
+                            color={getCategoryColor(poi.category)}
+                            onPress={() => {
+                                const result: GeoResult = {
+                                    name: poi.name, displayName: poi.name,
+                                    lat: poi.lat, lng: poi.lng,
+                                    type: 'place', isCity: false,
+                                };
+                                selectDestination(result);
+                            }}
+                        />
+                    ))}
+
+                    {/* Selected POI circle */}
+                    {selectedPOI && (
+                        <Circle
+                            center={{ latitude: selectedPOI.lat, longitude: selectedPOI.lng }}
+                            radius={80}
+                            fillColor="rgba(0,0,0,0.08)"
+                            strokeColor={Colors.textPrimary}
+                            strokeWidth={1}
+                        />
+                    )}
+                </MapView>
+
+                {/* Navigation step banner — fixed at top of map area */}
+                {navMode && currentNavStep && (
+                    <SafeAreaView style={styles.navBannerWrap} edges={['top']} pointerEvents="box-none">
+                        <View style={styles.navBanner}>
+                            <View style={styles.navBannerIcon}>
+                                <Ionicons
+                                    name={(STEP_ICONS[currentNavStep.type] || 'navigate') as any}
+                                    size={22}
+                                    color={Colors.textInverse}
+                                />
+                            </View>
+                            <View style={styles.navBannerText}>
+                                <Text style={styles.navInstruction} numberOfLines={2}>{currentNavStep.instruction}</Text>
+                                <Text style={styles.navDistance}>
+                                    {formatDistance(currentNavStep.distance)} · {formatDuration(currentNavStep.duration)}
+                                </Text>
+                            </View>
+                            <TouchableOpacity style={styles.navEndBtn} onPress={stopNavigation}>
+                                <Ionicons name="close" size={18} color={Colors.textInverse} />
+                            </TouchableOpacity>
+                        </View>
+                    </SafeAreaView>
+                )}
+
+                {/* Map type toggle button — top-right corner of map */}
+                {!navMode && (
+                    <SafeAreaView style={styles.mapTopRight} edges={['top']} pointerEvents="box-none">
                         <TouchableOpacity
                             style={styles.iconBtn}
                             onPress={() => setShowMapTypeMenu(!showMapTypeMenu)}
                         >
                             <Ionicons name="layers-outline" size={20} color={Colors.textPrimary} />
                         </TouchableOpacity>
-                    </View>
+                    </SafeAreaView>
                 )}
 
                 {/* Map type mini-menu */}
@@ -510,7 +492,12 @@ export default function MapHomeScreen() {
                                 onPress={() => { setMapType(t); setShowMapTypeMenu(false); }}
                             >
                                 <Ionicons
-                                    name={t === 'standard' ? 'map-outline' : t === 'satellite' ? 'globe-outline' : t === 'terrain' ? 'triangle-outline' : 'layers'}
+                                    name={
+                                        t === 'standard' ? 'map-outline'
+                                        : t === 'satellite' ? 'globe-outline'
+                                        : t === 'terrain' ? 'triangle-outline'
+                                        : 'layers'
+                                    }
                                     size={14}
                                     color={mapType === t ? Colors.textInverse : Colors.textPrimary}
                                 />
@@ -521,146 +508,154 @@ export default function MapHomeScreen() {
                         ))}
                     </View>
                 )}
-            </SafeAreaView>
 
-            {/* ── POI Category Bar ── */}
-            {!navMode && (
-                <View style={styles.poiBar}>
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.poiBarContent}
-                    >
-                        {POI_CATEGORIES.map(cat => (
-                            <Animated.View key={cat.id} style={activePOI === cat.id ? { transform: [{ scale: poiBtnScale }] } : undefined}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.poiChip,
-                                        activePOI === cat.id && { backgroundColor: cat.color, borderColor: cat.color },
-                                    ]}
-                                    onPress={() => handlePOICategory(cat.id)}
-                                >
-                                    <Ionicons
-                                        name={cat.icon as any}
-                                        size={14}
-                                        color={activePOI === cat.id ? '#fff' : Colors.textSecondary}
-                                    />
-                                    <Text style={[
-                                        styles.poiChipText,
-                                        activePOI === cat.id && { color: '#fff' },
-                                    ]}>
-                                        {cat.label}
-                                    </Text>
-                                    {activePOI === cat.id && pois.length > 0 && (
-                                        <View style={styles.poiCountBadge}>
-                                            <Text style={styles.poiCountText}>{pois.length}</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            </Animated.View>
-                        ))}
-                    </ScrollView>
-
-                    {/* poi loading indicator below category bar */}
-                    {poiLoading && (
-                        <View style={styles.poiLoadingBannerInline}>
-                            <ActivityIndicator size="small" color={Colors.textPrimary} />
-                            <Text style={styles.poiLoadingText}>Finding nearby places...</Text>
-                        </View>
+                {/* FABs — right side of map */}
+                <View style={styles.fabColumn}>
+                    <TouchableOpacity style={styles.fab} onPress={recenter}>
+                        <Ionicons name="navigate-circle-outline" size={22} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    {!locationGranted && (
+                        <TouchableOpacity style={[styles.fab, styles.fabAccent]} onPress={requestLocation}>
+                            <Ionicons name="location" size={22} color={Colors.textInverse} />
+                        </TouchableOpacity>
                     )}
                 </View>
-            )}
-
-            {/* ── Right-side floating buttons ── */}
-            <View style={styles.fabColumn}>
-                {/* Recenter */}
-                <TouchableOpacity style={styles.fab} onPress={recenter}>
-                    <Ionicons name="navigate-circle-outline" size={22} color={Colors.textPrimary} />
-                </TouchableOpacity>
-                {/* Location grant */}
-                {!locationGranted && (
-                    <TouchableOpacity style={[styles.fab, styles.fabAccent]} onPress={requestLocation}>
-                        <Ionicons name="location" size={22} color={Colors.textInverse} />
-                    </TouchableOpacity>
-                )}
             </View>
 
-            {/* ── Route Info Panel ── */}
-            <Animated.View style={[styles.routePanel, { transform: [{ translateY: routePanelSlide }] }]}>
-                {routeLoading ? (
-                    <View style={styles.routePanelLoading}>
-                        <ActivityIndicator size="small" color={Colors.textPrimary} />
-                        <Text style={styles.routePanelLoadingText}>Calculating route...</Text>
-                    </View>
-                ) : route && destination ? (
-                    <>
-                        {/* Destination + distance/duration */}
-                        <View style={styles.routeInfoRow}>
-                            <View style={styles.routeDestBlock}>
-                                <Text style={styles.routeDestName} numberOfLines={1}>{destination.name}</Text>
-                                <Text style={styles.routeDestSub} numberOfLines={1}>
-                                    {destination.isCity ? destination.displayName.split(',').slice(0, 2).join(',') : 'Custom location'}
-                                </Text>
-                            </View>
-                            <View style={styles.routeMetrics}>
-                                <View style={styles.routeMetric}>
-                                    <Ionicons name="map-outline" size={13} color={Colors.textMuted} />
-                                    <Text style={styles.routeMetricVal}>{formatDistance(route.distanceM)}</Text>
-                                </View>
-                                <View style={styles.routeMetric}>
-                                    <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
-                                    <Text style={styles.routeMetricVal}>{formatDuration(route.durationS)}</Text>
-                                </View>
-                            </View>
-                        </View>
+            {/* ── Bottom Panel (25 %) ──────────────────────────────────────── */}
+            <View style={styles.bottomPanel}>
 
-                        {/* Steps preview (first 2 steps) */}
-                        {route.steps.slice(0, 2).map((step, i) => (
-                            <View key={i} style={styles.stepRow}>
-                                <View style={styles.stepIconBox}>
-                                    <Ionicons name={(STEP_ICONS[step.type] || 'navigate') as any} size={13} color={Colors.textSecondary} />
-                                </View>
-                                <Text style={styles.stepText} numberOfLines={1}>{step.instruction}</Text>
-                                <Text style={styles.stepDist}>{formatDistance(step.distance)}</Text>
+                {/* Search bar — always visible */}
+                <TouchableOpacity style={styles.searchBar} onPress={openSearch} activeOpacity={0.9}>
+                    <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+                    <Text
+                        style={[styles.searchBarText, destination && styles.searchBarTextActive]}
+                        numberOfLines={1}
+                    >
+                        {destination ? destination.name : 'Search city or place…'}
+                    </Text>
+                    {destination ? (
+                        <TouchableOpacity
+                            onPress={clearDestination}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                        </TouchableOpacity>
+                    ) : (
+                        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                    )}
+                </TouchableOpacity>
+
+                {/* ── Destination selected ── */}
+                {destination ? (
+                    <View style={styles.destPanel}>
+                        {/* Distance / time row */}
+                        {routeLoading ? (
+                            <View style={styles.routeLoadingRow}>
+                                <ActivityIndicator size="small" color={Colors.textPrimary} />
+                                <Text style={styles.routeLoadingText}>Calculating route…</Text>
                             </View>
-                        ))}
-                        {route.steps.length > 2 && (
-                            <Text style={styles.moreSteps}>+{route.steps.length - 2} more steps</Text>
-                        )}
+                        ) : route ? (
+                            <View style={styles.routeMetricsRow}>
+                                <Ionicons name="map-outline" size={13} color={Colors.textMuted} />
+                                <Text style={styles.routeMetricVal}>{formatDistance(route.distanceM)}</Text>
+                                <View style={styles.metricDot} />
+                                <Ionicons name="time-outline" size={13} color={Colors.textMuted} />
+                                <Text style={styles.routeMetricVal}>{formatDuration(route.durationS)}</Text>
+                            </View>
+                        ) : null}
 
                         {/* Action buttons */}
-                        <View style={styles.routeActions}>
-                            {/* Navigate button */}
-                            <TouchableOpacity
-                                style={styles.navBtn}
-                                onPress={navMode ? stopNavigation : startNavigation}
-                            >
-                                <Ionicons name={navMode ? 'stop-circle' : 'navigate'} size={16} color={Colors.textInverse} />
-                                <Text style={styles.navBtnText}>{navMode ? 'Stop Nav' : 'Navigate'}</Text>
-                            </TouchableOpacity>
-
-                            {/* Find Routes – only for city destinations */}
-                            {destination.isCity && userCity && (
-                                <TouchableOpacity style={styles.findRoutesBtn} onPress={handleFindRoutes}>
-                                    <Ionicons name="train-outline" size={16} color={Colors.textPrimary} />
+                        <View style={styles.actionRow}>
+                            {/* Find Routes — primary CTA, shown for city destinations */}
+                            {destination.isCity && userCity ? (
+                                <TouchableOpacity
+                                    style={styles.findRoutesBtn}
+                                    onPress={handleFindRoutes}
+                                >
+                                    <Ionicons name="train-outline" size={16} color={Colors.textInverse} />
                                     <Text style={styles.findRoutesBtnText}>Find Routes</Text>
                                 </TouchableOpacity>
-                            )}
+                            ) : null}
+
+                            {/* Navigate */}
+                            <TouchableOpacity
+                                style={[styles.navBtn, destination.isCity && userCity && styles.navBtnSecondary]}
+                                onPress={navMode ? stopNavigation : startNavigation}
+                            >
+                                <Ionicons
+                                    name={navMode ? 'stop-circle' : 'navigate'}
+                                    size={16}
+                                    color={destination.isCity && userCity ? Colors.textPrimary : Colors.textInverse}
+                                />
+                                <Text style={[
+                                    styles.navBtnText,
+                                    destination.isCity && userCity && styles.navBtnTextSecondary,
+                                ]}>
+                                    {navMode ? 'Stop' : 'Navigate'}
+                                </Text>
+                            </TouchableOpacity>
 
                             {/* Clear */}
                             <TouchableOpacity style={styles.clearBtn} onPress={clearDestination}>
                                 <Ionicons name="close" size={16} color={Colors.textPrimary} />
                             </TouchableOpacity>
                         </View>
-                    </>
-                ) : null}
-            </Animated.View>
+                    </View>
+                ) : (
+                    /* ── No destination: show POI category chips ── */
+                    <View style={styles.poiSection}>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.poiBarContent}
+                        >
+                            {POI_CATEGORIES.map(cat => (
+                                <Animated.View
+                                    key={cat.id}
+                                    style={activePOI === cat.id ? { transform: [{ scale: poiBtnScale }] } : undefined}
+                                >
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.poiChip,
+                                            activePOI === cat.id && { backgroundColor: cat.color, borderColor: cat.color },
+                                        ]}
+                                        onPress={() => handlePOICategory(cat.id)}
+                                    >
+                                        <Ionicons
+                                            name={cat.icon as any}
+                                            size={14}
+                                            color={activePOI === cat.id ? '#fff' : Colors.textSecondary}
+                                        />
+                                        <Text style={[
+                                            styles.poiChipText,
+                                            activePOI === cat.id && { color: '#fff' },
+                                        ]}>
+                                            {cat.label}
+                                        </Text>
+                                        {activePOI === cat.id && pois.length > 0 && (
+                                            <View style={styles.poiCountBadge}>
+                                                <Text style={styles.poiCountText}>{pois.length}</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                </Animated.View>
+                            ))}
+                        </ScrollView>
+                        {poiLoading && (
+                            <View style={styles.poiLoadingRow}>
+                                <ActivityIndicator size="small" color={Colors.textPrimary} />
+                                <Text style={styles.poiLoadingText}>Finding nearby places…</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+            </View>
 
-            {/* ── Search Panel (full-screen modal-like) ── */}
+            {/* ── Full-screen Search Panel ─────────────────────────────────── */}
             {showSearchPanel && (
                 <Animated.View style={[styles.searchPanel, { opacity: searchPanelFade }]}>
                     <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-                        {/* Search input row */}
                         <View style={styles.searchPanelHeader}>
                             <TouchableOpacity onPress={closeSearch} style={styles.searchPanelBack}>
                                 <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
@@ -675,10 +670,14 @@ export default function MapHomeScreen() {
                                 autoFocus
                                 clearButtonMode="while-editing"
                             />
-                            {searching && <ActivityIndicator size="small" color={Colors.textPrimary} style={{ marginRight: 12 }} />}
+                            {searching && (
+                                <ActivityIndicator
+                                    size="small"
+                                    color={Colors.textPrimary}
+                                    style={{ marginRight: 12 }}
+                                />
+                            )}
                         </View>
-
-                        {/* Results */}
                         <FlatList
                             data={searchResults}
                             keyExtractor={(r, i) => `${r.lat}-${r.lng}-${i}`}
@@ -694,9 +693,7 @@ export default function MapHomeScreen() {
                                     <View style={styles.searchHint}>
                                         <Ionicons name="search-outline" size={36} color={Colors.textMuted} />
                                         <Text style={styles.searchHintText}>Type a city name to search</Text>
-                                        <Text style={styles.searchHintSub}>
-                                            e.g. "Chennai", "Mumbai", "Kochi"
-                                        </Text>
+                                        <Text style={styles.searchHintSub}>e.g. "Chennai", "Mumbai", "Kochi"</Text>
                                     </View>
                                 ) : null
                             }
@@ -705,36 +702,32 @@ export default function MapHomeScreen() {
                     </SafeAreaView>
                 </Animated.View>
             )}
-
-            {/* ── No-location prompt ── */}
-            {!locationGranted && !showSearchPanel && (
-                <View style={styles.locationPrompt}>
-                    <TouchableOpacity style={styles.locationPromptBtn} onPress={requestLocation}>
-                        <Ionicons name="location" size={16} color={Colors.textInverse} />
-                        <Text style={styles.locationPromptText}>Enable Location</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
         </View>
     );
 }
 
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, flexDirection: 'column', backgroundColor: Colors.background },
 
-    // ── Top overlay ──
-    topOverlay: {
-        position: 'absolute', top: 0, left: 0, right: 0,
-        paddingHorizontal: Spacing.sm, paddingTop: 4,
+    // ── Map container (75 %) ─────────────────────────────────────────────────
+    mapContainer: {
+        height: height * 0.75,
+        overflow: 'hidden',
     },
 
-    // Nav banner
+    // Nav banner (absolute inside mapContainer)
+    navBannerWrap: {
+        position: 'absolute', top: 0, left: 0, right: 0,
+        paddingHorizontal: Spacing.sm, paddingTop: 4,
+        zIndex: 10,
+    },
     navBanner: {
         flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
         backgroundColor: Colors.accent, borderRadius: Radius.xl,
-        padding: Spacing.md, marginBottom: Spacing.xs, ...Shadow.large,
+        padding: Spacing.md, ...Shadow.large,
     },
     navBannerIcon: {
         width: 40, height: 40, borderRadius: 20,
@@ -750,18 +743,11 @@ const styles = StyleSheet.create({
         alignItems: 'center', justifyContent: 'center',
     },
 
-    // Search bar
-    searchBarRow: {
-        flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.xs,
+    // Map-type toggle (top-right of map)
+    mapTopRight: {
+        position: 'absolute', top: 0, right: Spacing.sm,
+        paddingTop: 4, zIndex: 10,
     },
-    searchBar: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        backgroundColor: Colors.background, borderRadius: Radius.full,
-        paddingHorizontal: Spacing.md, paddingVertical: 11,
-        ...Shadow.large, borderWidth: 1, borderColor: Colors.border,
-    },
-    searchBarText: { flex: 1, fontSize: 14, color: Colors.textMuted },
-    searchBarTextActive: { color: Colors.textPrimary, fontWeight: '500' },
     iconBtn: {
         width: 42, height: 42, borderRadius: 21,
         backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center',
@@ -770,9 +756,10 @@ const styles = StyleSheet.create({
 
     // Map type menu
     mapTypeMenu: {
-        position: 'absolute', top: 52, right: Spacing.sm,
+        position: 'absolute', top: 58, right: Spacing.sm,
         backgroundColor: Colors.background, borderRadius: Radius.lg,
-        ...Shadow.large, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+        ...Shadow.large, borderWidth: 1, borderColor: Colors.border,
+        overflow: 'hidden', zIndex: 20,
     },
     mapTypeOption: {
         flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
@@ -783,24 +770,99 @@ const styles = StyleSheet.create({
     mapTypeText: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
     mapTypeTextActive: { color: Colors.textInverse },
 
-    poiLoadingBannerInline: {
+    // FABs (right side of map, pinned above bottom panel)
+    fabColumn: {
+        position: 'absolute',
+        right: Spacing.sm,
+        bottom: Spacing.md,
+        gap: Spacing.sm,
+        zIndex: 10,
+    },
+    fab: {
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center',
+        ...Shadow.medium, borderWidth: 1, borderColor: Colors.border,
+    },
+    fabAccent: { backgroundColor: Colors.accent },
+
+    // Map markers
+    destMarkerWrap: { alignItems: 'center' },
+    poiMarkerWrap: {
+        width: 22, height: 22, borderRadius: 11,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1.5, borderColor: '#fff', ...Shadow.small,
+    },
+
+    // ── Bottom Panel (25 %) ──────────────────────────────────────────────────
+    bottomPanel: {
+        flex: 1,
+        backgroundColor: Colors.background,
+        borderTopLeftRadius: Radius.xl,
+        borderTopRightRadius: Radius.xl,
+        paddingHorizontal: Spacing.md,
+        paddingTop: Spacing.md,
+        paddingBottom: Spacing.sm,
+        ...Shadow.large,
+        borderTopWidth: 1,
+        borderColor: Colors.border,
+        gap: Spacing.sm,
+    },
+
+    // Search bar in bottom panel
+    searchBar: {
         flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: Radius.full,
-        paddingHorizontal: Spacing.md, paddingVertical: 6,
-        alignSelf: 'center', marginTop: 8, ...Shadow.small,
+        backgroundColor: Colors.surface,
+        borderRadius: Radius.full,
+        paddingHorizontal: Spacing.md, paddingVertical: 13,
+        borderWidth: 1, borderColor: Colors.border,
+        ...Shadow.small,
+    },
+    searchBarText: { flex: 1, fontSize: 15, color: Colors.textMuted },
+    searchBarTextActive: { color: Colors.textPrimary, fontWeight: '500' },
+
+    // Destination panel
+    destPanel: { flex: 1, gap: Spacing.xs },
+    routeLoadingRow: {
+        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    },
+    routeLoadingText: { fontSize: 13, color: Colors.textSecondary },
+    routeMetricsRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+    },
+    routeMetricVal: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+    metricDot: {
+        width: 3, height: 3, borderRadius: 1.5,
+        backgroundColor: Colors.textMuted, marginHorizontal: 2,
+    },
+    actionRow: {
+        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flex: 1,
+    },
+    findRoutesBtn: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: Spacing.xs, backgroundColor: Colors.accent, paddingVertical: 13,
+        borderRadius: Radius.full, ...Shadow.small,
+    },
+    findRoutesBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textInverse },
+    navBtn: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: Spacing.xs, backgroundColor: Colors.accent, paddingVertical: 13,
+        borderRadius: Radius.full,
+    },
+    navBtnSecondary: {
+        backgroundColor: Colors.surface,
+        borderWidth: 1.5, borderColor: Colors.borderDark,
+    },
+    navBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textInverse },
+    navBtnTextSecondary: { color: Colors.textPrimary },
+    clearBtn: {
+        width: 44, height: 44, borderRadius: 22,
+        backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center',
         borderWidth: 1, borderColor: Colors.border,
     },
-    poiLoadingText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
 
-    // ── POI Category Bar ──
-    poiBar: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 110 : 95,
-        left: 0, right: 0,
-    },
-    poiBarContent: {
-        paddingHorizontal: Spacing.sm, gap: Spacing.xs,
-    },
+    // POI chips section
+    poiSection: { flex: 1, gap: Spacing.xs },
+    poiBarContent: { gap: Spacing.xs, paddingRight: Spacing.sm },
     poiChip: {
         flexDirection: 'row', alignItems: 'center', gap: 5,
         backgroundColor: Colors.background, borderRadius: Radius.full,
@@ -814,87 +876,13 @@ const styles = StyleSheet.create({
         alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
     },
     poiCountText: { fontSize: 9, fontWeight: '700', color: '#fff' },
-
-    // ── FABs ──
-    fabColumn: {
-        position: 'absolute',
-        right: Spacing.sm,
-        bottom: 240,
-        gap: Spacing.sm,
-    },
-    fab: {
-        width: 44, height: 44, borderRadius: 22,
-        backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center',
-        ...Shadow.medium, borderWidth: 1, borderColor: Colors.border,
-    },
-    fabAccent: { backgroundColor: Colors.accent },
-
-    // ── Route Panel ──
-    routePanel: {
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        backgroundColor: Colors.background,
-        borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl,
-        padding: Spacing.md, paddingBottom: Spacing.xl,
-        ...Shadow.large, borderWidth: 1, borderColor: Colors.border,
-    },
-    routePanelLoading: {
+    poiLoadingRow: {
         flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        justifyContent: 'center', paddingVertical: Spacing.md,
+        paddingTop: 4,
     },
-    routePanelLoadingText: { fontSize: 14, color: Colors.textSecondary },
+    poiLoadingText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
 
-    routeInfoRow: {
-        flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginBottom: Spacing.sm,
-    },
-    routeDestBlock: { flex: 1 },
-    routeDestName: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-    routeDestSub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-    routeMetrics: { alignItems: 'flex-end', gap: 4 },
-    routeMetric: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    routeMetricVal: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
-
-    stepRow: {
-        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        paddingVertical: 5, borderTopWidth: 1, borderTopColor: Colors.border,
-    },
-    stepIconBox: {
-        width: 24, height: 24, borderRadius: 12,
-        backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center',
-    },
-    stepText: { flex: 1, fontSize: 12, color: Colors.textSecondary },
-    stepDist: { fontSize: 11, fontWeight: '600', color: Colors.textMuted },
-    moreSteps: { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
-
-    routeActions: {
-        flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm, alignItems: 'center',
-    },
-    navBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: Spacing.xs, backgroundColor: Colors.accent, paddingVertical: 13,
-        borderRadius: Radius.full, ...Shadow.small,
-    },
-    navBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textInverse },
-    findRoutesBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: Spacing.xs, backgroundColor: Colors.surface, paddingVertical: 13,
-        borderRadius: Radius.full, borderWidth: 1.5, borderColor: Colors.textPrimary,
-    },
-    findRoutesBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-    clearBtn: {
-        width: 44, height: 44, borderRadius: 22,
-        backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center',
-        borderWidth: 1, borderColor: Colors.border,
-    },
-
-    // ── Map markers ──
-    destMarkerWrap: { alignItems: 'center' },
-    poiMarkerWrap: {
-        width: 22, height: 22, borderRadius: 11,
-        alignItems: 'center', justifyContent: 'center',
-        borderWidth: 1.5, borderColor: '#fff', ...Shadow.small,
-    },
-
-    // ── Search panel ──
+    // ── Full-screen Search Panel ─────────────────────────────────────────────
     searchPanel: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: Colors.background,
@@ -929,17 +917,5 @@ const styles = StyleSheet.create({
     searchHint: { alignItems: 'center', paddingTop: 60, gap: Spacing.sm },
     searchHintText: { fontSize: 16, fontWeight: '500', color: Colors.textMuted },
     searchHintSub: { fontSize: 13, color: Colors.textMuted },
-
-    // ── No location prompt ──
-    locationPrompt: {
-        position: 'absolute',
-        bottom: 100,
-        alignSelf: 'center',
-    },
-    locationPromptBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-        backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12,
-        borderRadius: Radius.full, ...Shadow.large,
-    },
-    locationPromptText: { fontSize: 14, fontWeight: '600', color: Colors.textInverse },
 });
+

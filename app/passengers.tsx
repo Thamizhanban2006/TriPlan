@@ -47,6 +47,7 @@ export default function PassengersScreen() {
     );
     const [expanded, setExpanded] = useState<number>(0);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [isPreparing, setIsPreparing] = useState(false);
 
     const updateField = (idx: number, field: keyof PassengerForm, val: string) => {
         setForms(prev => prev.map((f, i) => i === idx ? { ...f, [field]: val } : f));
@@ -66,8 +67,14 @@ export default function PassengersScreen() {
 
     const handleProceed = () => {
         if (!validate()) return;
+        setIsPreparing(true);
         dispatch({ type: 'SET_PASSENGERS', payload: forms as any });
-        router.push('/booking');
+        
+        // Simulate a real app "preparing" the booking summary
+        setTimeout(() => {
+            router.push('/booking');
+            setIsPreparing(false);
+        }, 1200);
     };
 
     const route = state.selectedRoute;
@@ -240,9 +247,14 @@ export default function PassengersScreen() {
 
             {/* Bottom CTA */}
             <View style={styles.bottomCTA}>
-                <TouchableOpacity style={styles.ctaBtn} onPress={handleProceed} activeOpacity={0.87}>
-                    <Text style={styles.ctaBtnText}>Proceed to Booking</Text>
-                    <Ionicons name="arrow-forward" size={18} color={Colors.textInverse} />
+                <TouchableOpacity 
+                    style={[styles.ctaBtn, isPreparing && { opacity: 0.8 }]} 
+                    onPress={handleProceed} 
+                    activeOpacity={0.87}
+                    disabled={isPreparing}
+                >
+                    <Text style={styles.ctaBtnText}>{isPreparing ? 'Preparing Summary...' : 'Proceed to Booking'}</Text>
+                    <Ionicons name={isPreparing ? "sync" : "arrow-forward"} size={18} color={Colors.textInverse} />
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

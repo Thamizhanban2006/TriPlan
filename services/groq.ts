@@ -280,3 +280,100 @@ Return JSON array of 3 RouteOption objects.`;
         return getMockRoutes({ from, to, date: '', passengers: 1, preference: 'speed', modes: [] });
     }
 }
+
+// ─── AI Pivot Engine – Connection Guardian ────────────────────────────────────
+
+export interface PivotAlertInput {
+    currentSpeedKmh: number;
+    distanceRemainingKm: number;
+    minutesRemaining: number;
+    missChancePct: number;
+    connectionName: string;      // e.g. "Chennai Central"
+    nextProvider: string;        // e.g. "IRCTC – Vande Bharat"
+    nextMode: string;            // train / flight / bus / auto / metro
+    departureTime: string;       // "17:00"
+    pickupLandmark: string;      // e.g. "Next signal junction"
+    rescueMode: 'auto' | 'bike_taxi' | 'cab';
+    rescueSavingMin: number;
+}
+
+/**
+ * Ask Groq to generate a hyper-local, empathetic AI pivot alert message.
+ * Returns a 2-4 sentence in-app banner message.
+ * Falls back to a template string if Groq call fails.
+ */
+export async function getPivotAlertMessage(input: PivotAlertInput): Promise<string> {
+    const rescueModeLabel =
+        input.rescueMode === 'auto' ? 'Auto-Rickshaw'
+            : input.rescueMode === 'bike_taxi' ? 'Bike Taxi (Rapido/Ola Bike)'
+                : 'Cab (Ola/Uber)';
+
+    const prompt = `You are TriPlan's Connection Guardian AI for Indian travellers.
+A traveller is at risk of missing their connection. Write a CONCISE, empathetic, action-oriented alert.
+
+Situation:
+- Current speed: ${Math.round(input.currentSpeedKmh)} km/h
+- Distance to connection: ${input.distanceRemainingKm.toFixed(1)} km
+- Minutes left before departure: ${Math.round(input.minutesRemaining)} min
+- Miss probability: ${Math.round(input.missChancePct)}%
+- Connection: ${input.connectionName}
+- Transport: ${input.nextProvider} (${input.nextMode}) departing at ${input.departureTime}
+- Rescue option: ${rescueModeLabel} from "${input.pickupLandmark}" → saves ~${input.rescueSavingMin} minutes
+
+Write exactly 2-3 sentences. Tone: urgent but calm, like a trusted friend.
+Include: what the problem is, what to do (get off / hail ${rescueModeLabel}), the time saving.
+Mention the landmark. Do NOT use markdown. Plain text only.`;
+
+    try {
+        const completion = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                {
+                    role: 'system',
+                    content:
+                        'You are TriPlan\'s Connection Guardian. Generate SHORT, urgent, plain-text pivot alerts for Indian travellers. No markdown. No lists. 2-3 sentences max.',
+                },
+                { role: 'user', content: prompt },
+            ],
+            temperature: 0.4,
+            max_tokens: 200,
+        });
+        const text = completion.choices[0]?.message?.content?.trim();
+        if (text && text.length > 20) return text;
+        throw new Error('Empty response');
+    } catch {
+        // Template fallback
+        return (
+            `Traffic detected! At ${Math.round(input.currentSpeedKmh)} km/h you have a ` +
+            `${Math.round(input.missChancePct)}% chance of missing your ${input.nextMode} ` +
+            `(${input.nextProvider}) at ${input.departureTime}. ` +
+            `Get off at ${input.pickupLandmark} and take a ${rescueModeLabel} — ` +
+            `it can save ~${input.rescueSavingMin} minutes through the side lane.`
+        );
+    }
+}
+
+/**
+ * Generate a very short (≤ 80 chars) notification headline for use in the
+ * system push notification title. Plain text, no markdown.
+ */
+export async function getPivotNotificationTitle(input: PivotAlertInput): Promise<string> {
+    const prompt = `In under 70 characters, write an urgent notification TITLE for a traveller who has a ${Math.round(input.missChancePct)}% chance of missing their ${input.nextMode} at ${input.departureTime}. No emojis. Plain text.`;
+
+    try {
+        const completion = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: 'Write ultra-short notification titles. Max 70 chars. No markdown. No emojis.' },
+                { role: 'user', content: prompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 40,
+        });
+        const text = completion.choices[0]?.message?.content?.trim();
+        if (text && text.length > 5) return text;
+        throw new Error('Empty');
+    } catch {
+        return `⚠️ ${Math.round(input.missChancePct)}% chance of missing ${input.nextMode} at ${input.departureTime}`;
+    }
+}
